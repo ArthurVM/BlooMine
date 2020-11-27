@@ -1,0 +1,7 @@
+# BlooMine dependencies
+argparse
+ray
+biopython
+mmh3
+bitarray
+matplotlib

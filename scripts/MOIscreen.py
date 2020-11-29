@@ -8,21 +8,27 @@ import sys
 import os
 import re
 import argparse
-import subprocess
-import warnings
-import math
 import datetime
 import collections
 
 import numpy as np
-import matplotlib.pyplot as plt
 from matplotlib import cm
 from Bio import SeqIO
 from Bio.Seq import Seq
 
-def isolate_target(fastq, target, output, min_kmer):
+
+def isolate_target(fastq, target, min_kmer):
 	""" Isolate the target sequence from the read using the target flanking regions.
+
+	INPUT:
+	fastq    <string> : path to a file containing reads in FASTQ format
+	target   <string> : path to a file containing target sequence flanking regions in FASTA format
+	min_kmer <int>    : the minimum kmer size to use in generating kmer lists
+
+	OUTPUT:
+	target_dict <dict> : a dictionary containing target sequences that have been isolated from filtered reads
 	"""
+
 	target_dict = {}
 	flank_coords = {}
 
@@ -35,7 +41,7 @@ def isolate_target(fastq, target, output, min_kmer):
 	tail_kas_array = make_kascade(str(tail_rec.seq), min_kmer)
 
 	for record in fq_record:
-		## iterate through each read and generate a kmer hit string on it for both flanks
+		## iterate through each read and generate start and end coordinates for the target in the read
 		head_pos_kmer_tup= kmer_hit(head_kas_array, record.seq, "head", min_kmer)
 		tail_pos_kmer_tup = kmer_hit(tail_kas_array, record.seq, "tail", min_kmer)
 
@@ -55,7 +61,22 @@ def isolate_target(fastq, target, output, min_kmer):
 
 	return target_dict
 
+
 def kmer_hit(kas_array, read, flank_flag, min_kmer):
+	""" Takes a kascade array and a read and identify the start and end of the target sequence based on
+	the hit position of the longest kmer.
+
+	INPUT:
+	kmer_array <list>   : an uncounted list of kmers in the given sequence
+	read       <string> : an input read
+	flank_flag <string> : a flag defining the flank (head/tail)
+	min_kmer   <int>    : the minimum kmer size to use in generating kmer lists
+
+	OUTPUT:
+	{head/tail}_pos <int>    : the coordinates for the interface between the flank and the target sequence
+	kmer            <string> : the longest kmer mapping to the read sequence
+	orientation     <string> : the orientation of the mapped kmer
+	"""
 
 	len_flank = len((kas_array[0])[0])
 
@@ -66,25 +87,39 @@ def kmer_hit(kas_array, read, flank_flag, min_kmer):
 		comp_read_array = make_kmer_array(str(read.reverse_complement()), k)
 
 		for i, kmer in enumerate(k_array):
+
 			if kmer in read_array:
 				orientation = "+"
+
 				if flank_flag == "head":
 					head_pos = read_array.index(kmer) + len_flank - i
 					return head_pos, kmer, orientation
+
 				elif flank_flag == "tail":
 					tail_pos = read_array.index(kmer) - i
 					return tail_pos, kmer, orientation
 
 			elif kmer in comp_read_array:
 				orientation = "-"
+
 				if flank_flag == "head":
 					head_pos = comp_read_array.index(kmer) + len_flank - i
 					return head_pos, kmer, orientation
+
 				elif flank_flag == "tail":
 					tail_pos = comp_read_array.index(kmer) - i
 					return tail_pos, kmer, orientation
 
+
 def report_out(target_dict, fastq, target, out_file="subpop_report.txt"):
+	""" Generates a report of target variation in the read set.
+
+	INPUT:
+	target_dict <dict>   : a dictionary containing target sequences that have been isolated from filtered reads
+	fastq       <string> : path to a file containing reads in FASTQ format
+	target      <string> : path to a file containing target sequence flanking regions in FASTA format
+	out_file    <string> : path to the output report file
+	"""
 
 	date_time = datetime.datetime.now().strftime("%d-%m-%y %H:%M:%S")
 
@@ -107,12 +142,24 @@ def report_out(target_dict, fastq, target, out_file="subpop_report.txt"):
 
 		print("", file=rp)
 
+
 def make_kmer_array(seq, k):
+	""" Generate a kmer array of seq
+
+	INPUT:
+	seq <string> : a DNA sequence
+	k   <int>    : a kmer sizes
+
+	OUTPUT:
+	kmer_array <list> : an uncounted list of kmers in the given sequence
+	"""
+
 	kmer_array = []
 	for i in range(len(seq)-k+1):
 		kmer = str(seq[i:i+k])
 		kmer_array.append(kmer)
 	return kmer_array
+
 
 def make_kascade(seq, min_kmer):
 	""" Generates a 'kascade' array for a given sequence, using min_kmer as a lowe bound for k.
@@ -124,6 +171,13 @@ def make_kascade(seq, min_kmer):
 	C^m_S = { K^k_S | m <= k <= |S| }
 	where
 	K^k_S = { S_(i,j+k) | 0 <= i <= |S|-k+1 }
+
+	INPUT:
+	seq <string>   : a DNA sequence
+	min_kmer <int> : the minimum kmer size to use in generating kmer lists
+
+	OUTPUT:
+	kas_array <list> : a list of kmer lists
 	"""
 
 	kas_array = []
@@ -133,6 +187,7 @@ def make_kascade(seq, min_kmer):
 		kas_array.append(kmer_array)
 		k-=1
 	return kas_array
+
 
 def is_file(filename):
 	""" Checks if a path is an existing file
@@ -146,6 +201,7 @@ def is_file(filename):
 	else:
 		return os.path.abspath(os.path.realpath(os.path.expanduser(filename)))
 
+
 def is_dir(dirname):
 	""" Checks if a path is an existing directory
 	"""
@@ -157,6 +213,7 @@ def is_dir(dirname):
 
 	else:
 		return os.path.abspath(os.path.realpath(os.path.expanduser(dirname)))
+
 
 def parse_args(argv):
 	""" argparse driven argument parser
@@ -173,15 +230,17 @@ def parse_args(argv):
 
 	return parser.parse_args(argv)
 
+
 def main(argv):
 
 	args = parse_args(argv)
 
-	target_dict = isolate_target(args.fastq, args.target, args.o, args.m)
+	target_dict = isolate_target(args.fastq, args.target, args.m)
 
 	report_file = os.path.join(args.o, "{basename}.report.txt".format(basename=os.path.splitext(os.path.basename(args.fastq))[0]))
 
 	report_out(target_dict, args.fastq, args.target, report_file)
+
 
 if __name__ == "__main__":
 	main(sys.argv)

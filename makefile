@@ -5,8 +5,7 @@
 .PHONY	= all clean
 RMO			= rm -vf
 RMF     = rm -vfr
-BINDIR  = ./bin/
-MKBINDIR		= mkdir $(BINDIR)
+MKDIR		= mkdir ./bin/
 
 # Compiler
 CXX				= g++
@@ -19,22 +18,19 @@ LDFLAGS		:= -L/usr/lib/x86_64-linux-gnu/ -lboost_program_options -pthread
 # BlooMine source
 SOURCES		= ./CPP_src/BlooMine.cpp
 OBJECTS		= $(SOURCES:.cpp=.o)
-BINS 			= ./BlooMine
+BINS 			= ./bin/BlooMine
 
 all: $(SOURCES) $(BINS)
 
 $(BINS): $(OBJECTS)
+	@echo "Making bin dir."
+	$(MKDIR)
 	@echo "Creating object..."
 	$(CC) $< -o $@ $(LDFLAGS)
 
 .cpp.o:
 	@echo "Checking.."
 	$(CC) -c $(CXXFLAGS) $< -o $@
-
-install:
-	@echo "Installing..."
-	$(MKBINDIR)
-	mv $(BINS) $(BINDIR)
 
 clean:
 	@echo "Cleaning up..."

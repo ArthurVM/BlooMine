@@ -3,7 +3,7 @@
 
 #include <thread>
 #include <future>
-#include <boost/program_options.hpp>
+#include "program_options.hpp"
 #include "utilities.hpp"
 #include "BloomFilter.hpp"
 #include "FQread.hpp"

@@ -1,7 +1,8 @@
-bin/
+build/*
+bin/*
 .nextflow*
-CPP_src/BlooMine
-CPP_src/BlooMine.o
+src/BlooMine
+src/BlooMine.o
 work/
 results/
 __pycache__/

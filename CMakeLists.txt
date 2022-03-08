@@ -4,6 +4,7 @@ project(BlooMine)
 ## set compiler and flags
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 
 ## find and include boost program_options library
 find_package( Boost 1.40 COMPONENTS program_options REQUIRED )

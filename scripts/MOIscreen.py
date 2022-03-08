@@ -46,18 +46,29 @@ def isolate_target(fastq, target, min_kmer):
 		tail_pos_kmer_tup = kmer_hit(tail_kas_array, record.seq, "tail", min_kmer)
 
 		## TODO: work this try catch container out
-		try:
-			head_pos, kmer_h, orientation = head_pos_kmer_tup
-			tail_pos, kmer_t, orientation = tail_pos_kmer_tup
+		head_pos, kmer_h, orientation = head_pos_kmer_tup
+		tail_pos, kmer_t, orientation = tail_pos_kmer_tup
 
-			if orientation == "+":
+		## Deal with reverse complemented flanking sequences
+		flankRCflag = False
+		if head_pos > tail_pos:
+			head_pos = len(record.seq) - head_pos + len(head_rec.seq)+1
+			tail_pos = len(record.seq) - tail_pos - len(tail_rec.seq)
+			flankRCflag = True
+
+		if orientation == "+":
+			if flankRCflag:
+				target_dict[record.description] = record.seq.reverse_complement()[head_pos:tail_pos]
+			else:
+				target_dict[record.description] = record.seq[head_pos+1:tail_pos].reverse_complement()
+
+		elif orientation == "-":
+			if flankRCflag:
 				target_dict[record.description] = record.seq[head_pos:tail_pos]
-
-			elif orientation == "-":
-				target_dict[record.description] = record.reverse_complement() ## detects that this is a reverse read, and therefore compliments the sequence to improve ease of analysis
-
-		except:
-			continue
+			else:
+				target_dict[record.description] = record.seq.reverse_complement()[head_pos+1:tail_pos].reverse_complement()
+				## detects that this is a reverse read, and therefore compliments the sequence to improve ease of analysis
+				## then RCs this to ensure comparison against other target regions is on the same strand as the flanking sequences
 
 	return target_dict
 

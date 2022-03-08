@@ -67,10 +67,12 @@ class FQread
  *
  * OUTPUT:
  *  <bool> : true if the read has similar kmer contents to the target sequence, else false
+ *
  ****************************************************************************************************/
 bool FQread::FPscreen( BloomFilter BF, const int threshold  )
 {
   int hit_count = 0;
+  int hit_countRC = 0;
   std::unordered_set<std::string> _readkset = genkmerset( _readseq, _k );
 
   for ( auto & kmer : _readkset ) {
@@ -207,7 +209,7 @@ SubAln FQread::kmer_align( std::unordered_set<std::string> target_kset )
   std::vector<std::string> ctarget_kset;
 
   for ( auto & kmer : target_kset ) {
-    std::string cseq = reverse_compliment( kmer );
+    std::string cseq = reverse_complement( kmer );
     ctarget_kset.push_back(cseq);
   }
 

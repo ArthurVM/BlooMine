@@ -128,7 +128,7 @@ std::vector<std::string> runBM( po::variables_map vm,
   while ( getline(inFQ, line) ) {
     linecounter++;    // increment the line counter
 
-    if ( linecounter % 4 != 0 ) {  // check if the linecounter has reaches a new block
+    if ( linecounter % 4 != 0 ) {  // check if the linecounter has reached a new block
       read_box.push_back(line);
     } else {
       read_box.push_back(line);    // capture the description line
@@ -144,6 +144,21 @@ std::vector<std::string> runBM( po::variables_map vm,
           for ( const auto & l : read_box ) { read_concat += l + "\n"; }
           read_hits.push_back(read_concat);
           // std::cout << read_concat;
+        }
+      } else {
+        // reverse complement the read sequence and rerun through the BF, adding to the counter on hits
+        // Screen block for complementing the read
+        std::string readseqRC = reverse_complement( read_box[1] );
+        FQread Read( readseqRC, vm["kmer"].as<int>(), hit, gap_open, neg );
+
+        if ( Read.FPscreen( BF, fp_threshold ) ) {            // if reverse complemented read passes first-pass screen
+          if ( Read.SPscreen( target_kset, spMST ) ) {        // if reverse complemented read passes second-pass screen
+
+            std::string read_concat;
+            for ( const auto & l : read_box ) { read_concat += l + "\n"; }
+            read_hits.push_back(read_concat);
+            // std::cout << read_concat;
+          }
         }
       }
 

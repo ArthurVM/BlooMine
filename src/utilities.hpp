@@ -145,14 +145,14 @@ char complement(char n)
     return 'N';
 }
 
-std::string reverse_compliment( std::string seq )
+std::string reverse_complement( std::string seq )
 {
-  /* Generates the reverse compliment of a DNA sequence
+  /* Generates the reverse complement of a DNA sequence
   */
   std::string cseq;
 
   for ( auto it = seq.crbegin(); it != seq.crend(); it++ ) {
-    try { cseq += complement(*it); }   // compliments the base and adds to cseq
+    try { cseq += complement(*it); }   // complements the base and adds to cseq
     catch ( std::out_of_range& e) { cseq += "N"; }          // if it is an unknown base, add N to cseq
   }
   return cseq;

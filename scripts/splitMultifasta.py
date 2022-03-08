@@ -17,12 +17,12 @@ def split_multi(fasta):
         sys.exit(1)
 
     elif len(seqrecs) == 1:
-        f1_out = "./f1.tmp.fa"
+        f1_out = "./tmp.f1.fa"
         SeqIO.write(seqrecs, f1_out, "fasta")
 
     elif len(seqrecs) == 2:
-        f1_out = "./f1.tmp.fa"
-        f2_out = "./f2.tmp.fa"
+        f1_out = "./tmp.f1.fa"
+        f2_out = "./tmp.f2.fa"
 
         SeqIO.write(seqrecs[0], f1_out, "fasta")
         SeqIO.write(seqrecs[1], f2_out, "fasta")

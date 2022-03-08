@@ -140,9 +140,9 @@ char complement(char n)
         return 'C';
     case 'C':
         return 'G';
+    default:
+      return 'N';
     }
-    assert(false);
-    return 'N';
 }
 
 std::string reverse_complement( std::string seq )

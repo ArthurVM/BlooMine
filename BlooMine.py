@@ -6,6 +6,21 @@ import subprocess
 from collections import defaultdict
 from Bio import SeqIO
 
+def prepareFQ(fastq):
+    """ Takes a fastq file and checks if it needs decompressing.
+    """
+
+    if fastq.endswith(".gz"):
+        print(f"Decompressing {fastq}...")
+        fqdc = fastq[:-3]
+
+        dcline = f"gunzip -c {fastq} > {fqdc}"
+        subprocess.run(dcline, shell=True)
+
+        return fqdc
+    else:
+        return fastq
+
 def splitMultiFasta(fasta):
     """ Takes a multifasta containing multiple flanking sequences, and pairs then, producing a fasta containing individual flank pairs.
     """
@@ -117,6 +132,8 @@ def main(argv):
     """ BlooMine main function
     """
     args = parseArgs(argv)
+    fqbox = [prepareFQ(fq) for fq in args.fastq]
+    args.fastq = fqbox
     runBlooMine(args)
 
 if __name__=="__main__":

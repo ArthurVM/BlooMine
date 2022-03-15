@@ -12,7 +12,6 @@ import datetime
 import collections
 
 import numpy as np
-from matplotlib import cm
 from Bio import SeqIO
 from Bio.Seq import Seq
 

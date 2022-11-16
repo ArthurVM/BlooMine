@@ -125,6 +125,7 @@ std::vector<std::string> runBM( po::variables_map vm,
     exit (2);
   }
 
+  // read in fastq
   while ( getline(inFQ, line) ) {
     linecounter++;    // increment the line counter
 

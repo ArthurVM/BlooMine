@@ -5,14 +5,14 @@ import sys
 import argparse
 from ._version import __version__
 
-from Afanc.utilities.generalUtils import isDir, isFile, checkDate, reformat_mapping_arg
-
 """
 Parse arguments for BlooMine
 """
 
 def run(args):
     ## level 0 run function
+    from bloomine.runFuncs import runBlooMine
+
     runBlooMine(args)
 
 

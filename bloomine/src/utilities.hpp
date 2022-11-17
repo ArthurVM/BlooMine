@@ -44,7 +44,7 @@ std::unordered_set<std::string> genkmerset( std::string seq, const int k )
 
   std::unordered_set<std::string> kmer_set;
 
-  for (int i = 0; i < seq.size()-k+1; i++) {
+  for ( long unsigned int i = 0; i < seq.size()-k+1; i++ ) {
     std::string kmer = seq.substr(i, k);
 
     kmer_set.insert(kmer);

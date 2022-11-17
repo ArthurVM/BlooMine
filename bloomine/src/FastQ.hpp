@@ -7,52 +7,52 @@ class FastQ
 {
   const std::string _files;
 
-  public:
-    std::string _fq1;
-    std::string _fq2;
-    bool _paired;
-    std::vector<std::string> _parts;
-    void partition( int );
+public:
+  std::string _fq1;
+  std::string _fq2;
+  bool _paired;
+  std::vector<std::string> _parts;
+  void partition( int );
 
-    FastQ( std::string fastq )
-    {
-      /* FastQ class constructor
-      */
-      try {
-        std::size_t splitpos = fastq.find(",");
+  FastQ( std::string fastq )
+  {
+    /* FastQ class constructor
+    */
+    try {
+      std::size_t splitpos = fastq.find(",");
 
-        if ( splitpos != std::string::npos ) {
-          _paired = true;
-          _fq1 = fastq.substr( 0, splitpos );
-          _fq2 = fastq.substr( splitpos+1, fastq.size() );
-        } else {
-          _paired = false;
-          _fq1 = fastq;
-        }
-      }
-      catch ( std::string fastq ) {
-        vprint( "FQ-ERROR", "Cannot parse FQ files: " + fastq, "r" );
-        exit(1);
+      if ( splitpos != std::string::npos ) {
+        _paired = true;
+        _fq1 = fastq.substr( 0, splitpos );
+        _fq2 = fastq.substr( splitpos+1, fastq.size() );
+      } else {
+        _paired = false;
+        _fq1 = fastq;
       }
     }
+    catch ( std::string fastq ) {
+      vprint( "FQ-ERROR", "Cannot parse FQ files: " + fastq, "r" );
+      exit(1);
+    }
+  }
 
-    ~FastQ(void) { /* Destructor */ }
+  ~FastQ(void) { /* Destructor */ }
 
-  private:
-    void runpart( std::string, int, std::string );
-    std::int32_t count_lines( std::ifstream& );
+private:
+  void runpart( std::string, int, std::string );
+  std::int32_t count_lines( std::ifstream& );
 };
 
 
 /****************************************************************************************************
- * Partition the fastq read set.
- *
- * INPUT:
- *  parts <int> : the number of partitions to split the fastq read set into
- *
- * OUTPUT:
- *  read_hits <vector<string>> : a vector of reads which contain the target sequence
- ****************************************************************************************************/
+* Partition the fastq read set.
+*
+* INPUT:
+*  parts <int> : the number of partitions to split the fastq read set into
+*
+* OUTPUT:
+*  read_hits <vector<string>> : a vector of reads which contain the target sequence
+****************************************************************************************************/
 void FastQ::partition( int parts )
 {
   if ( _paired ) {
@@ -170,7 +170,7 @@ void FastQ::runpart( std::string file, int p, std::string fq_ID )
   inFQ.close();
 }
 
-std::int32_t FastQ::count_lines(std::ifstream& inFile)
+std::int32_t FastQ::count_lines( std::ifstream& inFile )
 {
   // dirty but quick (ish) way of counting the number of lines in an open file
   std::int32_t numlines=0;

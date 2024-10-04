@@ -3,6 +3,7 @@
 
 #include "utilities.hpp"
 
+// class for handling FASTQ data on disk
 class FastQ
 {
   const std::string _files;
@@ -39,8 +40,8 @@ class FastQ
     ~FastQ(void) { /* Destructor */ }
 
   private:
-    void runpart( std::string, int, std::string );
-    std::int32_t count_lines( std::ifstream& );
+    void runPart( std::string, int, std::string );
+    std::int32_t countReads( std::ifstream& inFQ );
 };
 
 
@@ -59,8 +60,8 @@ void FastQ::partition( int parts )
     if ( parts > 2 ) {
       // check to see if partitioning is necessary
       vprint( "PREPROCESSING", "Partitioning paired reads for multithreading...", "g" );
-      runpart( _fq1, parts/2, "_1" );
-      runpart( _fq2, parts/2, "_2" );
+      runPart( _fq1, parts/2, "_1" );
+      runPart( _fq2, parts/2, "_2" );
     } else {
       // otherwise just populate _parts with the paired read files
       _parts.push_back( _fq1 );
@@ -70,7 +71,7 @@ void FastQ::partition( int parts )
     if ( parts > 1 ) {
       // check to see if partitioning is necessary
       vprint( "PREPROCESSING", "Partitioning unpaired reads for multithreading...", "g" );
-      runpart( _fq1, parts, "_UNP" );
+      runPart( _fq1, parts, "_UNP" );
     } else {
       // otherwise just populate _parts with the single unpaired read file
       _parts.push_back( _fq1 );
@@ -78,15 +79,16 @@ void FastQ::partition( int parts )
   }
 }
 
-void FastQ::runpart( std::string file, int p, std::string fq_ID )
+void FastQ::runPart( std::string file, int p, std::string fq_ID )
 {
   /*  Partitions a file into p partitions by reads entry (4 lines per read)
   */
 
-  std::ifstream fileRL(file);
+  // open the file in binary, check, and store in string buffer
+  std::ifstream inFQ(file, std::ios::binary);
 
   try {
-    if ( !fileRL.good() ) {
+    if ( !inFQ.good() ) {
       throw file;
     }
   }
@@ -95,27 +97,13 @@ void FastQ::runpart( std::string file, int p, std::string fq_ID )
     exit(1);
   }
 
-  std::size_t linecount = count_lines( fileRL ); // store the number of lines in the fastq file
-  std::size_t readcount;                         // store the number of reads in the fastq file
-
-  fileRL.close(); std::ifstream inFQ(file);       // Gross close and reopen file for iterating through
-
-  // cout << "linecount : " << linecount << endl;
-
-  try {
-    if ( linecount % 4 != 0 ) {
-      throw linecount;
-    } else {
-      readcount = linecount/4;    // calc the number of reads in the file
-    }
-  }
-  catch ( std::int32_t linecount ) {
-    vprint("PART-ERROR", "FASTQ malformed. linecount % 4 non 0. Please check that there are no fragmented reads. Exiting...", "r");
-    // cout << "Line count : " << linecount << endl;
-    exit (1);
-  }
-
-  // cout << "readcount : " << readcount << endl;
+  // count the number of reads in the fastq file
+  std::size_t readcount = countReads( inFQ );
+  // cout << readcount << endl;
+  
+  // Reset the file pointer to the beginning
+  inFQ.clear();
+  inFQ.seekg(0, std::ios::beg);
 
   // Calculate and store the number of reads in each partition
   std::vector<std::size_t> partvec;
@@ -149,40 +137,61 @@ void FastQ::runpart( std::string file, int p, std::string fq_ID )
   std::ofstream fqout;
   fqout.open(fqouts_vec[iptr]);
 
-  for ( std::int32_t lc = 0; lc < linecount && std::getline(inFQ, line); lc++ ) {
-    if ( lc < partline-1 ) {                      // check if the end of the partition is approaching
-      fqout << line << "\n";                      // write the line to the partition file
-    } else if ( lc == partline-1 && iptr < p ) {   // detects end of partition approaching
-      // cout << iptr << " " << partline <<  endl;
-      fqout << line << "\n";                      // capture the last line into the partition file
-      iptr++;                                     // increments the partition ptr to specify the next partition
-      partline += partvec[iptr]*4;                // specify the number of lines in this partition
+  // Iterate through the FASTQ file line by line
+  std::int32_t lc = 0;
+  while ( std::getline(inFQ, line) ) {
+    lc++; // Increment line counter
 
-      fqout.close();                              // close the previous partition file
+    // Write the line to the current partition file
+    fqout << line << "\n";
 
-      // cout << _parts[iptr] << " : " << partline/4 << endl;
-      if ( iptr < p ) {
-        // cout << "opening new file" << endl;
-        fqout.open(fqouts_vec[iptr]);              // open the new partition file
-      }
+    // Check if the end of the partition is approaching
+    if ( lc == partline && iptr < p ) {
+      // Close the current partition file
+      fqout.close();
+
+      // Increment the partition pointer
+      iptr++;
+
+      // Update the line counter for the next partition
+      partline += partvec[iptr]*4;
+
+      // Open the next partition file
+      fqout.open(fqouts_vec[iptr]);
     }
   }
+
+  // Close the last partition file
+  fqout.close();
+
+  // Close the input FASTQ file
   inFQ.close();
 }
 
-std::int32_t FastQ::count_lines(std::ifstream& inFile)
+std::int32_t FastQ::countReads( std::ifstream& inFQ )
 {
-  // dirty but quick (ish) way of counting the number of lines in an open file
+  // Count the number of reads in the file
+  std::int32_t readcount;
   std::int32_t numlines=0;
   std::string line;
-
-  // int linecount = std::count(std::istreambuf_iterator<char>(inFile),
-  //                            std::istreambuf_iterator<char>(), '\n');
-
-  while ( std::getline(inFile, line) ) {
+  while ( std::getline(inFQ, line) ) {
     numlines++;
   }
-  return numlines;
+
+  try {
+    if ( numlines % 4 != 0 ) {
+      throw numlines;
+    } else {
+      readcount = numlines/4;    // calc the number of reads in the file
+    }
+  }
+  catch ( std::int32_t numlines ) {
+    vprint("PART-ERROR", "FASTQ malformed. linecount % 4 non 0. Please check that there are no malformed reads. Exiting...", "r");
+    // cout << "Line count : " << linecount << endl;
+    exit (1);
+  }
+
+  return readcount;
 }
 
 #endif /* FASTQ_HPP */

@@ -1,25 +1,27 @@
 #ifndef BLOOMINE_HPP
 #define BLOOMINE_HPP
 
-#include <thread>
+#include <vector>
 #include <future>
+#include <iostream>
+#include <fstream>
 #include <boost/program_options.hpp>
 #include "utilities.hpp"
 #include "BloomFilter.hpp"
 #include "FQread.hpp"
-#include "FastQ.hpp"
 #include "SPscreenutils.hpp"
 
 namespace po = boost::program_options;
 
-po::variables_map parse_args( int, char** );
-void check_argc( int, char**);
-void check_threadcount( int );
-void check_floats( float, float );
-void check_ksize( int );
+po::variables_map parseArgs( int, char** );
+void checkArgc( int, char**);
+void checkThreadCount( int );
+void checkFloats( float, float );
+void checkKsize( int );
+std::vector<std::string> readFQ( std::string fq_file );
 BloomFilter genBF( po::variables_map, int& );
 std::vector<std::string> runBM( po::variables_map,
-                                std::string,
+                                std::vector<std::string>,
                                 BloomFilter,
                                 std::unordered_set<std::string>,
                                 const int,
@@ -27,7 +29,6 @@ std::vector<std::string> runBM( po::variables_map,
                                 const double,
                                 const double,
                                 const double );
-void print_params( po::variables_map);
-std::vector<std::string> partition_file( std::string, int );
+void printParams( po::variables_map);
 
 #endif /* BLOOMINE_HPP */

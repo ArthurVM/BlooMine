@@ -128,7 +128,7 @@ int vprint( std::string subprocess, std::string message, std::string col )
   return 0;
 }
 
-char complement(char n)
+char compliment(char n)
 {
     switch(n)
     {
@@ -145,14 +145,14 @@ char complement(char n)
     }
 }
 
-std::string reverse_complement( std::string seq )
+std::string reverseCompliment( std::string seq )
 {
-  /* Generates the reverse complement of a DNA sequence
+  /* Generates the reverse compliment of a DNA sequence
   */
   std::string cseq;
 
   for ( auto it = seq.crbegin(); it != seq.crend(); it++ ) {
-    try { cseq += complement(*it); }   // complements the base and adds to cseq
+    try { cseq += compliment(*it); }   // compliments the base and adds to cseq
     catch ( std::out_of_range& e) { cseq += "N"; }          // if it is an unknown base, add N to cseq
   }
   return cseq;

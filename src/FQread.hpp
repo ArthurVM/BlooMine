@@ -31,28 +31,28 @@ class FQread
     std::unordered_set<std::string> _readkset;
 
     // generates a kmer set from a sequence
-    std::unordered_set<std::string> genkmerset( std::string, const int );
+    std::unordered_set<std::string> genKmerSet( std::string, const int );
 
     // generates a map of kmers and the positions they map to in the read
-    std::map<std::string, std::vector<int>> genkmerposmap( std::string, const int );
+    std::map<std::string, std::vector<int>> genKmerPosMap( std::string, const int );
 
     // performs a kmer alignment by mapping from a target sequence to a read
-    SubAln kmer_align( std::unordered_set<std::string> );
+    SubAln kmerAlign( std::unordered_set<std::string> );
 
     // splits the kmer alignment into subalignments for maximum subalignment scoring
-    std::vector<SubAln> split_subalignments( SubAln);
+    std::vector<SubAln> splitSubalignments( SubAln);
 
     // finds the maximum scoring subalignment
-    SubAln find_max_subalignment( std::vector<SubAln> );
+    SubAln findMaxSubalignment( std::vector<SubAln> );
 
     // concatenate a subalingment vector
-    SubAln concat_subaln_chunk( std::vector<SubAln> );
+    SubAln concatSubalnChunk( std::vector<SubAln> );
 
     // takes a subalignment chunk and returns the alignment score of that chunk
-    int score_subalignment( std::string );
+    int scoreSubAlignment( std::string );
 
     // removes trailing gap ragions from an alignment chunk
-    SubAln remove_trailing( std::string );
+    SubAln removeTrailing( std::string );
 };
 
 
@@ -73,7 +73,7 @@ bool FQread::FPscreen( BloomFilter BF, const int threshold  )
 {
   int hit_count = 0;
   int hit_countRC = 0;
-  std::unordered_set<std::string> _readkset = genkmerset( _readseq, _k );
+  std::unordered_set<std::string> _readkset = genKmerSet( _readseq, _k );
 
   for ( auto & kmer : _readkset ) {
     if ( BF.check(kmer) ) {
@@ -99,7 +99,7 @@ bool FQread::FPscreen( BloomFilter BF, const int threshold  )
  * OUTPUT:
  *  kmer_set <unordered_set<string>> : an unordered set of kmers contained within the given sequence
  ****************************************************************************************************/
-std::unordered_set<std::string> FQread::genkmerset( std::string seq, const int k )
+std::unordered_set<std::string> FQread::genKmerSet( std::string seq, const int k )
 {
   std::unordered_set<std::string> kmer_set;
 
@@ -186,7 +186,7 @@ std::unordered_set<std::string> FQread::genkmerset( std::string seq, const int k
  ****************************************************************************************************/
 bool FQread::SPscreen( std::unordered_set<std::string> target_kset, double mst )
 {
-  SubAln max_aln = kmer_align( target_kset );
+  SubAln max_aln = kmerAlign( target_kset );
   return ( max_aln.score >= mst ? true : false );
 }
 
@@ -204,20 +204,19 @@ bool FQread::SPscreen( std::unordered_set<std::string> target_kset, double mst )
  *  maxmum_scoring_subaln <SubAln> : the maximum scoring subalignment
  *
  ****************************************************************************************************/
-SubAln FQread::kmer_align( std::unordered_set<std::string> target_kset )
+SubAln FQread::kmerAlign( std::unordered_set<std::string> target_kset )
 {
   std::vector<std::string> ctarget_kset;
 
-  for ( auto & kmer : target_kset ) {
-    std::string cseq = reverse_complement( kmer );
+  for (const auto & kmer : target_kset ) {
+    std::string cseq = reverseCompliment( kmer );
     ctarget_kset.push_back(cseq);
   }
 
   std::unordered_set<std::string> unique_kmer_hits;      // container to store kmers which intersect the read and target arrays
 
   // generate a kmer posmap to store kmers and positions where they belong in
-  std::map<std::string, std::vector<int>> read_posmap = genkmerposmap( _readseq, _k );
-
+  std::map<std::string, std::vector<int>> read_posmap = genKmerPosMap( _readseq, _k );
 
   // generate a zero array of the read to contain intersecting kmers
   // char zero_array[_readseq.size()];
@@ -225,10 +224,10 @@ SubAln FQread::kmer_align( std::unordered_set<std::string> target_kset )
   for ( int i=0; i<_readseq.size(); i++ ) { zero_array += '-'; }
 
   // iterate through the target kmer set and adjust the zero array according to where regions intersect within the read
-  for ( auto & kmer : target_kset ) {
+  for (const auto & kmer : target_kset ) {
     std::vector<int> kmer_posvec = read_posmap[kmer];
 
-    for ( auto & pos : kmer_posvec ) {
+    for (const auto & pos : kmer_posvec ) {
       for ( int i=0; i<kmer.size(); i++ ) {
         zero_array[pos+i] = kmer[i];
       }
@@ -254,11 +253,13 @@ SubAln FQread::kmer_align( std::unordered_set<std::string> target_kset )
 
   // TODO : adjust these functions to create SubAln structs so that I can capture the start and end positions of each subalingment in the read
   // Done
-  SubAln stripped_subaln = remove_trailing( zero_array );
+  SubAln stripped_subaln = removeTrailing( zero_array );
 
   // split the alignment and find the max scoring subalignment
-  std::vector<SubAln> chunk_vec = split_subalignments( stripped_subaln );
-  SubAln max_aln = find_max_subalignment( chunk_vec );
+  std::vector<SubAln> chunk_vec = splitSubalignments( stripped_subaln );
+
+  // TODO: this function is a bit flimsy and causes an error without the if catch
+  SubAln max_aln = findMaxSubalignment( chunk_vec );
 
   std::string leading_blank = std::string(max_aln.start, '-');
   std::string tailing_blank = std::string(_readlen-max_aln.end, '-');
@@ -283,7 +284,7 @@ SubAln FQread::kmer_align( std::unordered_set<std::string> target_kset )
  *
  * This gap threshold is calibrated such that a single kmer hit followed a gap equal to the gap
  * threshold will result in a score of approximately 0. The alignment is broken at each position
- * where a gap exists of >= gap threshold by the split_subalignments function. Every permutation
+ * where a gap exists of >= gap threshold by the splitSubalignments function. Every permutation
  * of sequential subalignments are then scored, totalling n(n/2+0.5) where n is the number of
  * subalignments.
  *
@@ -309,7 +310,7 @@ SubAln FQread::kmer_align( std::unordered_set<std::string> target_kset )
  * OUTPUT:
  *  chunk_vec <vector<SubAln>> : a vector containing SubAln structures
  ****************************************************************************************************/
-std::vector<SubAln> FQread::split_subalignments( SubAln subaln_chunk )
+std::vector<SubAln> FQread::splitSubalignments( SubAln subaln_chunk )
 {
   // TODO : I think the substr out of range bug is here...
   std::vector<SubAln> chunk_vec;
@@ -335,7 +336,7 @@ std::vector<SubAln> FQread::split_subalignments( SubAln subaln_chunk )
       cn = i+1-(c0+gap_count);                  // the end of the subaln chunk
       aln_fragment = aln_chunk.substr(c0, cn);  // define the new subaln chunk
 
-      SubAln AlnChunk{ aln_fragment, gap_count, score_subalignment( aln_fragment ), subaln_chunk.start+c0, subaln_chunk.start+c0+cn };   // define a new aln chunk
+      SubAln AlnChunk{ aln_fragment, gap_count, scoreSubAlignment( aln_fragment ), subaln_chunk.start+c0, subaln_chunk.start+c0+cn };   // define a new aln chunk
       // cout << "SPLIT-SUBALN :: " << AlnChunk.aln << " " << AlnChunk.start << ":" << AlnChunk.end << " " << c0 << ":" << cn <<  endl;
 
       chunk_vec.push_back(AlnChunk);
@@ -349,7 +350,7 @@ std::vector<SubAln> FQread::split_subalignments( SubAln subaln_chunk )
   cn = aln_chunk.size()-c0;
   aln_fragment = aln_chunk.substr(c0, cn);
 
-  SubAln AlnChunk{ aln_fragment, 0, score_subalignment( aln_fragment ), subaln_chunk.start+c0, subaln_chunk.start+c0+cn };
+  SubAln AlnChunk{ aln_fragment, 0, scoreSubAlignment( aln_fragment ), subaln_chunk.start+c0, subaln_chunk.start+c0+cn };
   // cout << "SPLIT-SUBALN :: " << AlnChunk.aln << " " << AlnChunk.start << ":" << AlnChunk.end << " " << c0 << ":" << cn <<  endl;
 
   chunk_vec.push_back(AlnChunk);
@@ -370,12 +371,25 @@ std::vector<SubAln> FQread::split_subalignments( SubAln subaln_chunk )
  * OUTPUT:
  *  none
  ****************************************************************************************************/
-SubAln FQread::find_max_subalignment( std::vector<SubAln> chunk_vec )
+SubAln FQread::findMaxSubalignment( std::vector<SubAln> chunk_vec )
 {
-  SubAln max_scoring_subaln;  // initialises a blank subalignment
-  SubAln concat_aln;
+  SubAln max_scoring_subaln{"", 0, 0, 0, 0};  // initialises a blank subalignment
+  SubAln concat_aln{"", 0, 0, 0, 0}; // initialises a concat subalignment
 
   size_t vecsize = chunk_vec.size();
+
+  // Handle the case of an empty vector
+  if (chunk_vec.empty()) {
+    return max_scoring_subaln;
+  }
+  
+  max_scoring_subaln = chunk_vec[0];  // reinitialse the first subalignment as max score
+
+  // Handle the case of a single subalignment
+  if (chunk_vec.size() == 1) {
+    return max_scoring_subaln;
+  }
+
 
   // Iterates through the subalignment twice to generate all possible concatenations, and scores them
   // This is O(horrible) but works fine in practice because NGS reads are small...
@@ -383,10 +397,11 @@ SubAln FQread::find_max_subalignment( std::vector<SubAln> chunk_vec )
     for ( int j=i; j<vecsize; j++ ) {
       std::vector<SubAln> subvec = subvector( chunk_vec, i, j );
       if ( subvec.size() > 1 ) {
-        concat_aln = concat_subaln_chunk( subvec );
+        concat_aln = concatSubalnChunk( subvec );
       } else {
         concat_aln = subvec[0];
       }
+      
       if ( concat_aln.score >  max_scoring_subaln.score ) {
         max_scoring_subaln = concat_aln;
       }
@@ -407,7 +422,7 @@ SubAln FQread::find_max_subalignment( std::vector<SubAln> chunk_vec )
  *  concat_sa <SubAln> : a subalignment structure formed from the concatenation of all SubAln's in
  *                       the input vector
  ****************************************************************************************************/
-SubAln FQread::concat_subaln_chunk( std::vector<SubAln> subaln_vec )
+SubAln FQread::concatSubalnChunk( std::vector<SubAln> subaln_vec )
 {
   std::string seq;
   int score = 0;
@@ -431,8 +446,6 @@ SubAln FQread::concat_subaln_chunk( std::vector<SubAln> subaln_vec )
   int gap = subaln_vec[vecsize-1].gap;
   SubAln concat_sa{ seq, gap, score, concat_start, concat_end };
 
-  // cout << concat_sa.aln << " " << concat_sa.start << ":" << concat_sa.end << endl;
-
   return concat_sa;
 }
 
@@ -444,12 +457,12 @@ SubAln FQread::concat_subaln_chunk( std::vector<SubAln> subaln_vec )
  * heavily than gap extension events.
  *
  * INPUT:
- *  aln_chunk <string> : the subalignment chunk generated by the split_subalignments function
+ *  aln_chunk <string> : the subalignment chunk generated by the splitSubalignments function
  *
  * OUPUT:
  *  score <int> : the score of the individual subalignment
  ****************************************************************************************************/
-int FQread::score_subalignment( std::string aln_chunk )
+int FQread::scoreSubAlignment( std::string aln_chunk )
 {
   int score = 0;
   int gap = 0;
@@ -479,7 +492,7 @@ int FQread::score_subalignment( std::string aln_chunk )
  * OUTPUT:
  *  kmer_posmap <map<string,int>> : map containing kmers and positions they map to in the read
  ****************************************************************************************************/
-std::map<std::string, std::vector<int>> FQread::genkmerposmap( std::string seq, const int k )
+std::map<std::string, std::vector<int>> FQread::genKmerPosMap( std::string seq, const int k )
 {
   std::map<std::string, std::vector<int>> kmer_posmap;
 
@@ -501,7 +514,7 @@ std::map<std::string, std::vector<int>> FQread::genkmerposmap( std::string seq, 
  * OUTPUT:
  *  stripped_chunk <string> : the alignment chunk with trailing gap characters stripped
  ****************************************************************************************************/
-SubAln FQread::remove_trailing( std::string raw_chunk )
+SubAln FQread::removeTrailing( std::string raw_chunk )
 {
   int chunk_start = 0;
   int chunk_end = 0;

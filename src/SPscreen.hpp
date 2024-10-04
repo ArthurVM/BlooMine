@@ -11,7 +11,7 @@ std::unordered_set<std::string> genkmerset( std::string, int );
 
 class BlooMineSP
 {
-  /* Class to control exectuion of an instance of the BlooMineSP pipeline for easier multithreading
+  /* Class to control execution of an instance of the BlooMineSP pipeline for easier multithreading
   */
 
 
@@ -24,7 +24,7 @@ class BlooMineSP
     std::string _tfasta;                          // input target fasta and fastq path strings
     float _min;                                   // minimum fraction of unique kmers to call a hit
     int _k;                                       // kmer size and threshold score
-    std::vector<std:;string> _FPhits;             // vector containing reads hits from first-pass screening
+    std::vector<std::string> _FPhits;             // vector containing reads hits from first-pass screening
     std::vector<std::string*> _SPhits;            // vector containing reads hits from second pass screening as pointers to elements of _FPhits
 
 };

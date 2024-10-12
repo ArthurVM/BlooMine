@@ -29,6 +29,35 @@ BlooMine ./my_targets.fa ./my_fastq_dir/ -t 10 --suffix _{1,2}.fastq.gz
 ```
 This runs BlooMine using targets found in `my_targets.fa` on FASTQ file pairs found in `./my_fastq_dir/` with the pairing suffix `_1.fastq.gz` and `_2.fastq.gz`.
 
+BlooMine takes a multifasta containing target read sequences formatted like:
+```
+>target_1 | flank1
+...TACG...
+>target_1 | flank2
+...TACG...
+>target_2 | flank1
+...TACG...
+>target_2 | flank2
+...TACG...
+```
+Sequences must be idenfiable as being flank1 or flank2 of a target sequence.
+
+A directory containing Illumina reads to be screened should be specified, along with a wildcard suffix for pairing read files. For example in the directory
+```
+.
+└── mydata
+    ├── cp1_1.fq.gz
+    ├── cp1_2.fq.gz
+    ├── cp2_1.fq.gz
+    ├── cp2_2.fq.gz
+    ├── cp3_1.fq.gz
+    └── cp3_2.fq.gz
+```
+the suffix would be `_{1,2}.fq.gz`.
+
+By default, BlooMine runs on physical memory. However, this may require a supercomputing cluster for larger datasets. Consequently, the `--on_disk` flag partitions read files to temporary files and streams them from disk. This is much slower, but requires substantially less memory.
+
+## Usage
 ```
 usage: BlooMine [-h] [-v] [-k KMER] [-f FALSE_POSITIVE] [-s FP_SIM] [-e SP_ERROR] [-t THREADS]
                 [-o OUTDIR] [--suffix SUFFIX] [--on_disk] [--bloomine_exec_bin BLOOMINE_EXEC_BIN]
@@ -61,30 +90,3 @@ optional arguments:
                         Path to a BlooMine_exec binary for use in this run. By default it will use the
                         executable in $PATH.
 ```
-BlooMine takes a multifasta containing target read sequences formatted like:
-```
->target_1 | flank1
-...TACG...
->target_1 | flank2
-...TACG...
->target_2 | flank1
-...TACG...
->target_2 | flank2
-...TACG...
-```
-Sequences must be idenfiable as being flank1 or flank2 of a target sequence.
-
-A directory containing Illumina reads to be screened should be specified, along with a wildcard suffix for pairing read files. For example in the directory
-```
-.
-└── mydata
-    ├── cp1_1.fq.gz
-    ├── cp1_2.fq.gz
-    ├── cp2_1.fq.gz
-    ├── cp2_2.fq.gz
-    ├── cp3_1.fq.gz
-    └── cp3_2.fq.gz
-```
-the suffix would be `_{1,2}.fq.gz`.
-
-By default, BlooMine runs on physical memory. However, this may require a supercomputing cluster for larger datasets. Consequently, the `--on_disk` flag partitions read files to temporary files and streams them from disk. This is much slower, but requires substantially less memory.

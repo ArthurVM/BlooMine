@@ -25,6 +25,11 @@ pip install ./
 
 ## Quick Start
 ```
+BlooMine ./my_targets.fa ./my_fastq_dir/ -t 10 --suffix _{1,2}.fastq.gz
+```
+This runs BlooMine using targets found in `my_targets.fa` on FASTQ file pairs found in `./my_fastq_dir/` with the pairing suffix `_1.fastq.gz` and `_2.fastq.gz`.
+
+```
 usage: BlooMine [-h] [-v] [-k KMER] [-f FALSE_POSITIVE] [-s FP_SIM] [-e SP_ERROR] [-t THREADS]
                 [-o OUTDIR] [--suffix SUFFIX] [--on_disk] [--bloomine_exec_bin BLOOMINE_EXEC_BIN]
                 target_fasta indir

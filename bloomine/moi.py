@@ -39,15 +39,17 @@ def isolate_target(fastq, flanks_fasta, min_kmer):
 
 	for record in fq_record:
 		## iterate through each read and generate start and end coordinates for the flanks_fasta in the read
-		head_pos_kmer_tup= kmer_hit(head_kas_array, record.seq, "head", min_kmer)
+		head_pos_kmer_tup = kmer_hit(head_kas_array, record.seq, "head", min_kmer)
 		tail_pos_kmer_tup = kmer_hit(tail_kas_array, record.seq, "tail", min_kmer)
 
 		## TODO: work this try catch container out
-		head_pos, kmer_h, orientation = head_pos_kmer_tup
-		tail_pos, kmer_t, orientation = tail_pos_kmer_tup
+		head_pos, kmer_h, orientation_h = head_pos_kmer_tup
+		tail_pos, kmer_t, orientation_t = tail_pos_kmer_tup
 
-		if head_pos == None or tail_pos == None:
+		## if either flank is not found, or if they are found on different strands, skip the read
+		if head_pos is None or tail_pos is None or orientation_h != orientation_t:
 			continue
+		orientation = orientation_h
 
 		## Deal with reverse complemented flanking sequences
 		flankRCflag = False
@@ -97,6 +99,7 @@ def kmer_hit(kas_array, read, flank_flag, min_kmer):
 		read_array = make_kmer_array(str(read), k)
 		comp_read_array = make_kmer_array(str(read.reverse_complement()), k)
 
+
 		for i, kmer in enumerate(k_array):
 			if kmer in read_array:
 				orientation = "+"
@@ -119,9 +122,9 @@ def kmer_hit(kas_array, read, flank_flag, min_kmer):
 				elif flank_flag == "tail":
 					tail_pos = comp_read_array.index(kmer) - i
 					return tail_pos, kmer, orientation
+		
+	return None, None, None
 
-			else:
-				return None, None, None
 
 def report_out(target_dict, fastq, flanks_fasta, out_file="subpop_report.txt"):
 	""" Generates a report of flanks_fasta variation in the read set.

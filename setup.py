@@ -35,7 +35,7 @@ setup(
     author='Arthur V. Morris',
     author_email='morrisa28@cardiff.ac.uk',
     url="https://github.com/ArthurVM/BlooMine",
-    packages=find_packages(''),
+    packages=find_packages(),
     include_package_data=True,
     classifiers=[
         "Intended Audience :: Developers",

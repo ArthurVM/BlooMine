@@ -30,6 +30,9 @@ int main( int argc, char** argv )
   int threads = args["threads"].as<int>();
   std::string prefix = args["prefix"].as<std::string>();
   bool on_disk = args.count("on-disk") > 0; // Check if "on-disk" flag is present
+  int flank_number = args["flank_number"].as<int>();
+
+  setFlankNumber(flank_number);
 
 
   // Call the modified generateBloomFilter function

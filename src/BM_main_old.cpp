@@ -126,7 +126,8 @@ std::vector<std::string> runBM( po::variables_map vm,
       if (read_box.size() == 4) {
 
         // Screen block
-        FQread Read( read_box[1], vm["kmer"].as<int>(), hit, gap_open, neg );
+        const std::string read_id = read_box[0];
+        FQread Read( read_box[1], vm["kmer"].as<int>(), hit, gap_open, neg, read_id );
 
         // Screen reads
         if ( Read.FPscreen( BF, fp_threshold ) ) {            // if read passes first-pass screen
@@ -141,7 +142,7 @@ std::vector<std::string> runBM( po::variables_map vm,
           // reverse complement the read sequence and rerun through the BF, adding to the counter on hits
           // Screen block for complementing the read
           std::string readseqRC = reverseCompliment( read_box[1] );
-          FQread Read( readseqRC, vm["kmer"].as<int>(), hit, gap_open, neg );
+          FQread Read( readseqRC, vm["kmer"].as<int>(), hit, gap_open, neg, read_id );
 
           if ( Read.FPscreen( BF, fp_threshold ) ) {            // if reverse complemented read passes first-pass screen
             if ( Read.SPscreen( target_kset, spMST ) ) {        // if reverse complemented read passes second-pass screen
@@ -540,7 +541,8 @@ std::vector<std::string> runBM( po::variables_map vm,
       if (read_box.size() == 4) {
 
         // Screen block
-        FQread Read( read_box[1], vm["kmer"].as<int>(), hit, gap_open, neg );
+        const std::string read_id = read_box[0];
+        FQread Read( read_box[1], vm["kmer"].as<int>(), hit, gap_open, neg, read_id );
 
         // Screen reads
         if ( Read.FPscreen( BF, fp_threshold ) ) {            // if read passes first-pass screen
@@ -555,7 +557,7 @@ std::vector<std::string> runBM( po::variables_map vm,
           // reverse complement the read sequence and rerun through the BF, adding to the counter on hits
           // Screen block for complementing the read
           std::string readseqRC = reverseCompliment( read_box[1] );
-          FQread Read( readseqRC, vm["kmer"].as<int>(), hit, gap_open, neg );
+          FQread Read( readseqRC, vm["kmer"].as<int>(), hit, gap_open, neg, read_id );
 
           if ( Read.FPscreen( BF, fp_threshold ) ) {            // if reverse complemented read passes first-pass screen
             if ( Read.SPscreen( target_kset, spMST ) ) {        // if reverse complemented read passes second-pass screen

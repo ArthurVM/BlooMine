@@ -86,4 +86,7 @@ std::vector<std::string> runBMdisk( int kmer,
 // Result Collection
 // void collectResults( VariablesMap, std::vector<std::future<std::vector<std::string>>> );
 
+// Flank logging
+void setFlankNumber(int flank);
+
 #endif /* BLOOMINE_UTILS_HPP */

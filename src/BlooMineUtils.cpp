@@ -5,6 +5,59 @@ Utility functions for the BlooMine module.
 #include "BlooMineUtils.hpp"
 #include "FastQ.hpp"
 
+#include <mutex>
+#include <atomic>
+
+struct ScoreLog {
+  std::string read_id;
+  int flank;
+  int score;
+  double threshold;
+  bool reverse_complement;
+  bool pass;
+};
+
+static std::mutex score_log_mutex;
+static std::vector<ScoreLog> score_logs;
+static std::atomic<int> g_flank_number{0};
+
+void setFlankNumber(int flank) {
+  g_flank_number.store(flank);
+}
+
+static void appendScoreLog(const std::string& read_id,
+                           int score,
+                           double threshold,
+                           bool rc,
+                           bool pass) {
+  std::lock_guard<std::mutex> lock(score_log_mutex);
+  score_logs.push_back(ScoreLog{read_id, g_flank_number.load(), score, threshold, rc, pass});
+}
+
+static void clearScoreLog() {
+  std::lock_guard<std::mutex> lock(score_log_mutex);
+  score_logs.clear();
+}
+
+static void writeScoreLog(const std::string& prefix) {
+  std::lock_guard<std::mutex> lock(score_log_mutex);
+  std::ofstream out(prefix + "_flank_scores.tsv", std::ios::out);
+  if (!out.is_open()) {
+    std::cerr << "LOG-ERROR: Cannot open flank score log for writing\n";
+    return;
+  }
+  out << "read_id\tflank\tscore\tthreshold\treverse_complement\tpass\n";
+  for (const auto& rec : score_logs) {
+    out << rec.read_id << "\t"
+        << rec.flank << "\t"
+        << rec.score << "\t"
+        << rec.threshold << "\t"
+        << (rec.reverse_complement ? "1" : "0") << "\t"
+        << (rec.pass ? "1" : "0") << "\n";
+  }
+  out.close();
+}
+
 
 /****************************************************************************************************
  * Generate a Bloom Filter from the target sequence.
@@ -178,9 +231,11 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
                                                                  BloomFilter BF,
                                                                  std::unordered_set<std::string> target_kset,
                                                                  int fp_threshold,
-                                                                 double spMST ) {
+                                                                double spMST ) {
   
   vprint( "FP-SCREEN", "Starting BlooMine screening pipeline...", "g" );
+
+  clearScoreLog();
 
   int thread_num = threads;
 
@@ -214,6 +269,8 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
   }
   
   fp_outfile.close();
+
+  writeScoreLog(prefix);
 
   return futures;
 }
@@ -262,11 +319,15 @@ std::vector<std::string> runBM( int kmer,
       if (read_box.size() == 4) {
 
         // Screen block
-        FQread Read( read_box[1], kmer, hit, gap_open, neg );
+        const std::string read_id = read_box[0];
+        FQread Read( read_box[1], kmer, hit, gap_open, neg, read_id );
 
         // Screen reads
         if ( Read.FPscreen( BF, fp_threshold ) ) {            // if read passes first-pass screen
-          if ( Read.SPscreen( target_kset, spMST ) ) {        // if read passes second-pass screen
+          SubAln aln{"",0,0,0,0};
+          bool sp_pass = Read.SPscreen( target_kset, spMST, &aln );
+          appendScoreLog(read_id, aln.score, spMST, false, sp_pass);
+          if ( sp_pass ) {        // if read passes second-pass screen
 
             std::string read_concat;
             for ( const auto & l : read_box ) { read_concat += l + "\n"; }
@@ -277,10 +338,13 @@ std::vector<std::string> runBM( int kmer,
           // reverse complement the read sequence and rerun through the BF, adding to the counter on hits
           // Screen block for complementing the read
           std::string readseqRC = reverseCompliment( read_box[1] );
-          FQread Read( readseqRC, kmer, hit, gap_open, neg );
+          FQread Read( readseqRC, kmer, hit, gap_open, neg, read_id );
 
           if ( Read.FPscreen( BF, fp_threshold ) ) {            // if reverse complemented read passes first-pass screen
-            if ( Read.SPscreen( target_kset, spMST ) ) {        // if reverse complemented read passes second-pass screen
+            SubAln aln{"",0,0,0,0};
+            bool sp_pass = Read.SPscreen( target_kset, spMST, &aln );
+            appendScoreLog(read_id, aln.score, spMST, true, sp_pass);
+            if ( sp_pass ) {        // if reverse complemented read passes second-pass screen
             
               std::string read_concat;
               for ( const auto & l : read_box ) { read_concat += l + "\n"; }
@@ -323,6 +387,8 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
   
   vprint( "FP-SCREEN", "Starting BlooMine screening pipeline...", "g" );
 
+  clearScoreLog();
+
   // ThreadPool pool(thread_num);
 
   // Create a vector of futures to store the results from each thread
@@ -353,6 +419,8 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
   }
   
   fp_outfile.close();
+
+  writeScoreLog(prefix);
 
   return futures;
 }
@@ -399,11 +467,15 @@ std::vector<std::string> runBMdisk( int kmer,
       if (read_box.size() == 4) {
 
         // Screen block
-        FQread Read(read_box[1], kmer, hit, gap_open, neg);
+        const std::string read_id = read_box[0];
+        FQread Read(read_box[1], kmer, hit, gap_open, neg, read_id);
 
         // Screen reads
         if (Read.FPscreen(BF, fp_threshold)) {            // if read passes first-pass screen
-          if (Read.SPscreen(target_kset, spMST)) {        // if read passes second-pass screen
+          SubAln aln{"",0,0,0,0};
+          bool sp_pass = Read.SPscreen(target_kset, spMST, &aln);
+          appendScoreLog(read_id, aln.score, spMST, false, sp_pass);
+          if (sp_pass) {        // if read passes second-pass screen
 
             std::string read_concat;
             for (const auto& l : read_box) { read_concat += l + "\n"; }
@@ -414,10 +486,13 @@ std::vector<std::string> runBMdisk( int kmer,
           // reverse complement the read sequence and rerun through the BF, adding to the counter on hits
           // Screen block for complementing the read
           std::string readseqRC = reverseCompliment(read_box[1]);
-          FQread Read(readseqRC, kmer, hit, gap_open, neg);
+          FQread Read(readseqRC, kmer, hit, gap_open, neg, read_id);
 
           if (Read.FPscreen(BF, fp_threshold)) {            // if reverse complemented read passes first-pass screen
-            if (Read.SPscreen(target_kset, spMST)) {        // if reverse complemented read passes second-pass screen
+            SubAln aln{"",0,0,0,0};
+            bool sp_pass = Read.SPscreen(target_kset, spMST, &aln);
+            appendScoreLog(read_id, aln.score, spMST, true, sp_pass);
+            if (sp_pass) {        // if reverse complemented read passes second-pass screen
 
               std::string read_concat;
               for (const auto& l : read_box) { read_concat += l + "\n"; }

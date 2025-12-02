@@ -42,6 +42,7 @@ class BloomineRunner:
         self.F1_fqout_prefix = f"{self.runprefix}_F1"
         self.F2_fqout_prefix = f"{self.runprefix}"
         self.moi_report = f"{self.rundir}/{self.runprefix}.report.txt"
+        self.combined_log = f"{self.rundir}/{self.runprefix}_combined_flank_scores.tsv"
 
 
     def run(self, p_table):
@@ -63,7 +64,7 @@ class BloomineRunner:
             fqjoined = ",".join(read_files)
 
             p_table.update(self.fqprefix, self.flank_prefix, runcode, "...", "yellow")   ## update progress table as running
-            returncode = self._execBloomine( runcode, self.f1_fasta, fqjoined, self.F1_fqout_prefix, self.args.threads, self.args.on_disk )
+            returncode = self._execBloomine( runcode, self.f1_fasta, fqjoined, self.F1_fqout_prefix, self.args.threads, self.args.on_disk, 1 )
 
             col = "red" if returncode != 0 else "green"
             message = "Finished" if returncode != 0 else returncode
@@ -80,7 +81,7 @@ class BloomineRunner:
 
         if not flank2_fq_flag and os.path.exists(f1_out):
             p_table.update(self.fqprefix, self.flank_prefix, runcode, "...", "yellow")   ## update progress table as running
-            returncode = self._execBloomine( runcode, self.f2_fasta, f1_out, self.F2_fqout_prefix, 1, False )
+            returncode = self._execBloomine( runcode, self.f2_fasta, f1_out, self.F2_fqout_prefix, 1, False, 2 )
             
             col = "red" if returncode != 0 else "green"
             message = "Finished" if returncode != 0 else returncode
@@ -92,24 +93,28 @@ class BloomineRunner:
 
         f2_out = f"{self.rundir}/{self.F2_fqout_prefix}_BMfiltered.fq"
 
+        # Merge flank logs into a single combined TSV for this probe set
+        self._merge_flank_logs()
+
 
         ###### MOI analysis ######
         runcode = "MOI"
+        
+        if not self.args.skip_moi:
+            if not moi_report_flag and os.path.exists(f2_out):
+                p_table.update(self.fqprefix, self.flank_prefix, runcode, "...", "yellow")  ## update progress table as running
+                self._runMOI(self.runprefix, f2_out)
+                p_table.update(self.fqprefix, self.flank_prefix, runcode, "Finished", "green")     ## update progress table as success
 
-        if not moi_report_flag and os.path.exists(f2_out):
-            p_table.update(self.fqprefix, self.flank_prefix, runcode, "...", "yellow")  ## update progress table as running
-            self._runMOI(self.runprefix, f2_out)
-            p_table.update(self.fqprefix, self.flank_prefix, runcode, "Finished", "green")     ## update progress table as success
-
-        elif os.path.exists(f2_out):
-            p_table.update(self.fqprefix, self.flank_prefix, runcode, "found", "green")      ## update progress table as found
+            elif os.path.exists(f2_out):
+                p_table.update(self.fqprefix, self.flank_prefix, runcode, "found", "green")      ## update progress table as found
 
 
         ###### cleanup ######
         self._cleanRun()
 
     
-    def _execBloomine(self, run_ID, flank, fq, outprefix, threads, on_disk):
+    def _execBloomine(self, run_ID, flank, fq, outprefix, threads, on_disk, flank_number):
         """
         Run BlooMine for a single flank screen.
         """
@@ -121,6 +126,7 @@ class BloomineRunner:
         --false_positive {self.false_positive} \
         --FP-sim {self.FP_sim} \
         --SP-error {self.SP_error} \
+        --flank_number {flank_number} \
         --threads {threads}"
 
         if on_disk:
@@ -142,12 +148,23 @@ class BloomineRunner:
     def _processFlankFasta(self):
         """ Take the flank pair multifasta and split into individual fastas
         """
-        for rec in SeqIO.parse(self.flank_fasta, "fasta"):
-            with open(f"{self.baserundir}/tmp.{rec.id}_f1.fa", "w") as f1out, open(f"{self.baserundir}/tmp.{rec.id}_f2.fa", "w") as f2out:
-                f1out.write(f">{rec.id}\n{rec.seq}")
-                f2out.write(f">{rec.id}\n{rec.seq}")
+        flanks = list(SeqIO.parse(self.flank_fasta, "fasta"))
 
-        return f"{self.baserundir}/tmp.{rec.id}_f1.fa", f"{self.baserundir}/tmp.{rec.id}_f2.fa"
+        if len(flanks) != 2:
+            raise ValueError(f"Expected 2 flank sequences in {self.flank_fasta}, found {len(flanks)}")
+
+        flank1, flank2 = flanks
+
+        flank1_path = f"{self.baserundir}/tmp.{self.flank_prefix}_f1.fa"
+        flank2_path = f"{self.baserundir}/tmp.{self.flank_prefix}_f2.fa"
+
+        with open(flank1_path, "w") as f1out:
+            f1out.write(f">{flank1.description}\n{flank1.seq}\n")
+
+        with open(flank2_path, "w") as f2out:
+            f2out.write(f">{flank2.description}\n{flank2.seq}\n")
+
+        return flank1_path, flank2_path
     
 
     def _checkRun(self):
@@ -176,10 +193,82 @@ class BloomineRunner:
     def _cleanRun(self):
         """ Clean up tmp files
         """
-        ## Remove tmp files in the run directory
+        ## remove tmp files in the run directory
         for filename in os.listdir(self.rundir):
             if filename.startswith("tmp"):
                 os.remove(os.path.join(self.rundir, filename))
 
         self.stdout.close()
         self.stderr.close()
+
+
+    def _merge_flank_logs(self):
+        """Merge flank 1 and flank 2 score logs into a single TSV."""
+        f1_log = f"{self.rundir}/{self.F1_fqout_prefix}_flank_scores.tsv"
+        f2_log = f"{self.rundir}/{self.F2_fqout_prefix}_flank_scores.tsv"
+
+        if not (os.path.exists(f1_log) and os.path.exists(f2_log)):
+            return
+
+        def parse(log_path):
+            scores = {}
+            threshold = None
+            with open(log_path) as fh:
+                fh.readline()
+                for line in fh:
+                    parts = line.rstrip("\n").split("\t")
+                    if len(parts) < 6:
+                        continue
+                    read_id, flank, score, thr, rc, passed = parts
+                    try:
+                        flank = int(flank)
+                        score_val = int(score)
+                        rc_val = int(rc)
+                        thr_val = float(thr)
+                    except ValueError:
+                        continue
+                    threshold = thr_val if threshold is None else threshold
+                    key = (read_id, rc_val)
+                    scores.setdefault(key, {}).setdefault(flank, 0)
+                    scores[(read_id, rc_val)][flank] = max(scores[(read_id, rc_val)][flank], score_val)
+            return scores, threshold
+
+        f1_scores, f1_thr = parse(f1_log)
+        f2_scores, f2_thr = parse(f2_log)
+
+        read_ids = set([rid for rid, _ in f1_scores.keys()] + [rid for rid, _ in f2_scores.keys()])
+        with open(self.combined_log, "w") as out:
+            out.write("\t".join([
+                "read_id",
+                "flank_1_score",
+                "flank_1_RC_score",
+                "flank_2_score",
+                "flank_2_RC_score",
+                "threshold",
+                "pass"
+            ]) + "\n")
+
+            threshold = max([t for t in [f1_thr, f2_thr] if t is not None], default=None)
+
+            for rid in sorted(read_ids):
+                f1_forward = f1_scores.get((rid, 0), {}).get(1)
+                f1_rc = f1_scores.get((rid, 1), {}).get(1)
+                f2_forward = f2_scores.get((rid, 0), {}).get(2)
+                f2_rc = f2_scores.get((rid, 1), {}).get(2)
+
+                f1_best = max([s for s in [f1_forward, f1_rc] if s is not None], default=None)
+                f2_best = max([s for s in [f2_forward, f2_rc] if s is not None], default=None)
+
+                pass_flag = None
+                if f1_thr is not None and f2_thr is not None:
+                    pass_flag = int((f1_best is not None and f1_best >= f1_thr) and (f2_best is not None and f2_best >= f2_thr))
+
+                out.write("\t".join([
+                    rid,
+                    "" if f1_forward is None else str(f1_forward),
+                    "" if f1_rc is None else str(f1_rc),
+                    "" if f2_forward is None else str(f2_forward),
+                    "" if f2_rc is None else str(f2_rc),
+                    "" if threshold is None else str(threshold),
+                    "" if pass_flag is None else str(pass_flag)
+                ]) + "\n")

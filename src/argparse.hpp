@@ -42,6 +42,7 @@ po::variables_map parseArgs( int argc, char** argv ) {
       ("false_positive",  po::value<double>(&f)->default_value(0.0001)->required(),   "false positive rate for building the Bloom filter. Range = 0-1. Default = 0.0001")
       ("FP-sim",          po::value<double>(&s)->default_value(50.0)->required(),     "FP-screen threshold for gene orthology inference as a percentage of kmer array identity. Range = 0-100. Default = 50.0")
       ("SP-error",        po::value<double>(&e)->default_value(4.0)->required(),      "SP-screen screening error threshold for alignment, where the maximum number of errors to return a read as a hit is 1/n given n. Default = 4.0.")
+      ("flank_number",    po::value<int>()->default_value(0),                         "flank identifier for logging (e.g. 1 or 2). Default = 0")
       ("threads",         po::value<int>(&threads)->default_value(4)->required(),     "number of threads to use. Must be an even <int>. Default = 4")
       ("on-disk",                                                                     "write temporary read partitions to disk and stream from them. Slower but low memory consumption. Default = Off");
 

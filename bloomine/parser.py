@@ -43,6 +43,8 @@ def run(args):
 
         ## Arguments        
         Kmer size : {args.kmer}
+        Anchor kmer size : {args.min_kmer}
+        Skip MOI : {args.skip_moi}
         False positive rate : {args.false_positive}
         FP-screen threshold : {args.FP_sim}
         SP-screen threshold : {args.SP_error}
@@ -77,23 +79,43 @@ parser_bloomine.add_argument('indir',
 
 parser_bloomine.add_argument('-k', '--kmer',
     action='store',
+    type=int,
     default=7,
     help='Kmer size. Default=7')
 
 parser_bloomine.add_argument('-f', '--false_positive',
     action='store',
+    type=float,
     default=0.0001,
     help='False positive rate for building the Bloom filter. Range=0-1. Default=0.0001')
 
 parser_bloomine.add_argument('-s', '--FP_sim',
     action='store',
-    default=50.0,
-    help='FP-screen threshold for gene orthology inference as a percentage of kmer array identity. Range=0-100. Default=50.0')
+    type=float,
+    default=35.0,
+    help='FP-screen threshold for gene orthology inference as a percentage of kmer array identity. Range=0-100. Default=35.0')
 
 parser_bloomine.add_argument('-e', '--SP_error',
     action='store',
+    type=float,
     default=4.0,
     help='SP-screen screening error threshold for alignment, where the maximum number of errors to return a read as a hit is 1/n given some n. Default=4.0')
+
+parser_bloomine.add_argument('-m', '--min_kmer',
+    action='store',
+    type=int,
+    default=11,
+    help='The minimum kmer size for use as an anchor during target region extraction. Default=11')
+
+parser_bloomine.add_argument('--skip_moi',
+    action='store_true',
+    default=False,
+    help='Skip MOI analysis. Default=False')
+
+parser_bloomine.add_argument('--polyfamily',
+    action='store_true',
+    default=False,
+    help='Bin reads by highest-scoring probe family and summarise STR variants to JSON. Default=False')
 
 parser_bloomine.add_argument('-t', '--threads',
     action='store',
@@ -123,4 +145,3 @@ parser_bloomine.add_argument('--bloomine_exec_bin',
     help='Path to a BlooMine_exec binary for use in this run. By default it will use the executable in $PATH.')
 
 parser_bloomine.set_defaults(func=run)
-

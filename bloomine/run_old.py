@@ -41,6 +41,7 @@ def runBlooMine(args, fq_box, flank_dict, f1f2_fasta, rundir):
                 --false_positive {args.false_positive} \
                 --FP-sim {args.FP_sim} \
                 --SP-error {args.SP_error} \
+                --flank_number 1 \
                 --threads {args.threads}"
                 
                 if args.on_disk:
@@ -59,6 +60,7 @@ def runBlooMine(args, fq_box, flank_dict, f1f2_fasta, rundir):
                     --false_positive {args.false_positive} \
                     --FP-sim {args.FP_sim} \
                     --SP-error {args.SP_error} \
+                    --flank_number 2 \
                     --threads 1"
 
                     subprocess.run(f2_runline + f" >> {prefix}.{flank_id}.log", shell=True)

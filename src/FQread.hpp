@@ -7,24 +7,18 @@
 class FQread
 {
   public:
+    std::string _id;
     std::string _readseq;
     int _k;
     size_t _readlen;
     double _h, _go, _ge;
 
-    FQread( const std::string seq, const int k, const double hit, const double gap_open, const double gap_extend )
-    {
-      _readseq = seq;
-      _k = k;
-      _h = hit;
-      _go = gap_open;
-      _ge = gap_extend;
-      _readlen = seq.size();
-    }
+    FQread( const std::string& seq, const int k, const double hit, const double gap_open, const double gap_extend, const std::string& id )
+      : _id(id), _readseq(seq), _k(k), _readlen(seq.size()), _h(hit), _go(gap_open), _ge(gap_extend) {}
     ~FQread() { /* FQread class destructor */ }
 
     bool FPscreen( BloomFilter, const int );
-    bool SPscreen( std::unordered_set<std::string>, double );
+    bool SPscreen( std::unordered_set<std::string>, double, SubAln* out_aln = nullptr );
 
 
   private:
@@ -184,9 +178,12 @@ std::unordered_set<std::string> FQread::genKmerSet( std::string seq, const int k
  * OUTPUT:
  *  <bool> : true if the read contains the target sequence, else false
  ****************************************************************************************************/
-bool FQread::SPscreen( std::unordered_set<std::string> target_kset, double mst )
+bool FQread::SPscreen( std::unordered_set<std::string> target_kset, double mst, SubAln* out_aln )
 {
   SubAln max_aln = kmerAlign( target_kset );
+  if ( out_aln ) {
+    *out_aln = max_aln;
+  }
   return ( max_aln.score >= mst ? true : false );
 }
 
@@ -234,6 +231,7 @@ SubAln FQread::kmerAlign( std::unordered_set<std::string> target_kset )
     }
   }
 
+  cout << _id << "\n";
   cout << _readseq << "\n";
 
   // Check that the zero_array has been filled, if not returns NULL.

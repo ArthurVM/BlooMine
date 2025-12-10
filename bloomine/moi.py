@@ -58,19 +58,21 @@ def isolate_target(fastq, flanks_fasta, min_kmer):
 			tail_pos = len(record.seq) - tail_pos - len(tail_rec.seq)
 			flankRCflag = True
 
-		if orientation == "+":
-			if flankRCflag:
-				target_dict[record.description] = record.seq.reverse_complement()[head_pos:tail_pos]
-			else:
-				target_dict[record.description] = record.seq[head_pos+1:tail_pos].reverse_complement()
+		## normalize all extracted targets to the flank strand (forward orientation)
+		## If the read maps to the reverse strand, work on the reverse-complemented read so flanks appear in forward order
+		read_seq = record.seq if orientation == "+" else record.seq.reverse_complement()
 
-		elif orientation == "-":
-			if flankRCflag:
-				target_dict[record.description] = record.seq[head_pos:tail_pos]
-			else:
-				target_dict[record.description] = record.seq.reverse_complement()[head_pos+1:tail_pos].reverse_complement()
-				## detects that this is a reverse read, and therefore compliments the sequence to improve ease of analysis
-				## then RCs this to ensure comparison against other flanks_fasta regions is on the same strand as the flanking sequences
+		## use the computed boundary positions; if flanks are reversed in the read, swap and RC the extracted region
+		if head_pos <= tail_pos:
+			start = head_pos + 1  ## exclude head flank
+			end = tail_pos        ## exclude tail flank
+			extracted = read_seq[start:end]
+		else:
+			start = tail_pos + 1
+			end = head_pos
+			extracted = read_seq[start:end].reverse_complement()
+
+		target_dict[record.description] = extracted
 
 	return target_dict
 

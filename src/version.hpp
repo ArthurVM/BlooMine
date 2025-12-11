@@ -3,6 +3,6 @@
 
 #include <string>
 
-std::string version = "0.1a";
+std::string version = "0.2a";
 
 #endif /* VERSION */

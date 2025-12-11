@@ -2,6 +2,8 @@
 #define BLOOMFILTER_HPP
 
 #include <vector>
+#include <string>
+#include <functional>
 #include <math.h>
 
 class BloomFilter
@@ -27,7 +29,7 @@ class BloomFilter
     void push( std::string );
 
     // check an element against the Bloom Filter to infer membership
-    bool check( std::string );
+    bool check( const std::string& ) const;
 };
 
 BloomFilter::BloomFilter( int els, float fp )
@@ -94,7 +96,7 @@ void BloomFilter::push( std::string element )
   }
 }
 
-bool BloomFilter::check( std::string element )
+bool BloomFilter::check( const std::string& element ) const
 {
   /* Check an element against the Bloom Filter
   where:

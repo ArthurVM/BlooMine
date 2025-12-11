@@ -5,6 +5,7 @@ Utility functions for the BlooMine module.
 #include "BlooMineUtils.hpp"
 #include "FastQ.hpp"
 
+#include <functional>
 #include <mutex>
 #include <atomic>
 
@@ -150,6 +151,9 @@ std::vector<std::vector<std::string>> partitionData( std::string fastq,
     read_data_parts.push_back(chunk);
   }
 
+  // free the full read buffer now that partitions are built
+  std::vector<std::string>().swap(read_data);
+
   return read_data_parts;
 }
 
@@ -227,9 +231,9 @@ std::vector<std::string> readFQ( std::string fastq_in ) {
 std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
                                                                  int kmer,
                                                                  std::string prefix,
-                                                                 std::vector<std::vector<std::string>> read_data_parts, 
-                                                                 BloomFilter BF,
-                                                                 std::unordered_set<std::string> target_kset,
+                                                                 const std::vector<std::vector<std::string>>& read_data_parts, 
+                                                                 const BloomFilter& BF,
+                                                                 const std::unordered_set<std::string>& target_kset,
                                                                  int fp_threshold,
                                                                 double spMST ) {
   
@@ -252,7 +256,14 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
   
   // spawn threads
   for (const auto& read_data_part : read_data_parts ) {
-    std::future<std::vector<std::string>> fp = std::async( runBM, kmer, read_data_part, BF, target_kset, fp_threshold, spMST );
+    std::future<std::vector<std::string>> fp = std::async( std::launch::async,
+                                                           runBM,
+                                                           kmer,
+                                                           std::cref(read_data_part),
+                                                           std::cref(BF),
+                                                           std::cref(target_kset),
+                                                           fp_threshold,
+                                                           spMST );
     futures.push_back(std::move(fp));
   }
   
@@ -293,9 +304,9 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
  *  read_hits <vector<string>> : a vector of reads which contain the target sequence
  ****************************************************************************************************/
 std::vector<std::string> runBM( int kmer,
-                                std::vector<std::string> read_data_part,
-                                BloomFilter BF,
-                                std::unordered_set<std::string> target_kset,
+                                const std::vector<std::string>& read_data_part,
+                                const BloomFilter& BF,
+                                const std::unordered_set<std::string>& target_kset,
                                 int fp_threshold,
                                 double spMST ) {
 
@@ -380,8 +391,8 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
                                                                  int kmer,
                                                                  std::string prefix,
                                                                  FastQ FQ, 
-                                                                 BloomFilter BF,
-                                                                 std::unordered_set<std::string> target_kset,
+                                                                 const BloomFilter& BF,
+                                                                 const std::unordered_set<std::string>& target_kset,
                                                                  int fp_threshold,
                                                                  double spMST ) {
   
@@ -402,7 +413,14 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
   
   // spawn threads
   for ( int i=0; i < threads; i++ ) {
-    std::future<std::vector<std::string>> fp = std::async( runBMdisk, kmer, FQ._parts[i], BF, target_kset, fp_threshold, spMST );
+    std::future<std::vector<std::string>> fp = std::async( std::launch::async,
+                                                           runBMdisk,
+                                                           kmer,
+                                                           FQ._parts[i],
+                                                           std::cref(BF),
+                                                           std::cref(target_kset),
+                                                           fp_threshold,
+                                                           spMST );
     futures.push_back(std::move(fp));
   }
   
@@ -444,8 +462,8 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
  ****************************************************************************************************/
 std::vector<std::string> runBMdisk( int kmer,
                                     std::string fq_file,
-                                    BloomFilter BF,
-                                    std::unordered_set<std::string> target_kset,
+                                    const BloomFilter& BF,
+                                    const std::unordered_set<std::string>& target_kset,
                                     int fp_threshold,
                                     double spMST ) {
 

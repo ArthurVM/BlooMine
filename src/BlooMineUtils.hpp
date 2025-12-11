@@ -51,9 +51,9 @@ std::vector<std::string> readFQ( std::string fastq );
 std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
                                                                  int kmer,
                                                                  std::string prefix,
-                                                                 std::vector<std::vector<std::string>> read_data_parts, 
-                                                                 BloomFilter BF,
-                                                                 std::unordered_set<std::string> target_kset,
+                                                                 const std::vector<std::vector<std::string>>& read_data_parts, 
+                                                                 const BloomFilter& BF,
+                                                                 const std::unordered_set<std::string>& target_kset,
                                                                  int fp_threshold,
                                                                  double spMST );
 
@@ -62,24 +62,24 @@ std::vector<std::future<std::vector<std::string>>> spawnThreads( int threads,
                                                                  int kmer,
                                                                  std::string prefix,
                                                                  FastQ FQ, 
-                                                                 BloomFilter BF,
-                                                                 std::unordered_set<std::string> target_kset,
+                                                                 const BloomFilter& BF,
+                                                                 const std::unordered_set<std::string>& target_kset,
                                                                  int fp_threshold,
                                                                  double spMST );
 
 // Run BlooMine from memory
 std::vector<std::string> runBM( int kmer,
-                                std::vector<std::string>,
-                                BloomFilter,
-                                std::unordered_set<std::string>,
+                                const std::vector<std::string>&,
+                                const BloomFilter&,
+                                const std::unordered_set<std::string>&,
                                 int,
                                 double );
 
 // Run BlooMine from disk
 std::vector<std::string> runBMdisk( int kmer,
                                     std::string fq_file,
-                                    BloomFilter BF,
-                                    std::unordered_set<std::string> target_kset,
+                                    const BloomFilter& BF,
+                                    const std::unordered_set<std::string>& target_kset,
                                     int fp_threshold,
                                     double spMST );
 

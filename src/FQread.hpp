@@ -17,8 +17,8 @@ class FQread
       : _id(id), _readseq(seq), _k(k), _readlen(seq.size()), _h(hit), _go(gap_open), _ge(gap_extend) {}
     ~FQread() { /* FQread class destructor */ }
 
-    bool FPscreen( BloomFilter, const int );
-    bool SPscreen( std::unordered_set<std::string>, double, SubAln* out_aln = nullptr );
+    bool FPscreen( const BloomFilter&, const int );
+    bool SPscreen( const std::unordered_set<std::string>&, double, SubAln* out_aln = nullptr );
 
 
   private:
@@ -31,7 +31,7 @@ class FQread
     std::map<std::string, std::vector<int>> genKmerPosMap( std::string, const int );
 
     // performs a kmer alignment by mapping from a target sequence to a read
-    SubAln kmerAlign( std::unordered_set<std::string> );
+    SubAln kmerAlign( const std::unordered_set<std::string>& );
 
     // splits the kmer alignment into subalignments for maximum subalignment scoring
     std::vector<SubAln> splitSubalignments( SubAln);
@@ -63,21 +63,30 @@ class FQread
  *  <bool> : true if the read has similar kmer contents to the target sequence, else false
  *
  ****************************************************************************************************/
-bool FQread::FPscreen( BloomFilter BF, const int threshold  )
+bool FQread::FPscreen( const BloomFilter& BF, const int threshold  )
 {
-  int hit_count = 0;
-  int hit_countRC = 0;
-  std::unordered_set<std::string> _readkset = genKmerSet( _readseq, _k );
+  // Fast early-exit counter; only unique kmers count toward the threshold.
+  if (threshold <= 0) { return true; }
 
-  for ( auto & kmer : _readkset ) {
-    if ( BF.check(kmer) ) {
-      hit_count++;
+  int hit_count = 0;
+  const int limit = static_cast<int>(_readseq.size()) - _k + 1;
+  if (limit <= 0) { return false; }
+
+  std::unordered_set<std::string> seen;
+  seen.reserve(static_cast<size_t>(limit));
+
+  for ( int i = 0; i < limit; i++ ) {
+    std::string kmer = _readseq.substr(i, _k);
+
+    // skip duplicate kmers
+    if ( !seen.insert(kmer).second ) { continue; }
+
+    if ( BF.check(kmer) && ++hit_count >= threshold ) {
+      return true;  // early exit when threshold reached
     }
   }
 
-  if ( hit_count >= threshold ) {
-    return true;
-  } else { return false; }
+  return false;
 }
 
 
@@ -178,7 +187,7 @@ std::unordered_set<std::string> FQread::genKmerSet( std::string seq, const int k
  * OUTPUT:
  *  <bool> : true if the read contains the target sequence, else false
  ****************************************************************************************************/
-bool FQread::SPscreen( std::unordered_set<std::string> target_kset, double mst, SubAln* out_aln )
+bool FQread::SPscreen( const std::unordered_set<std::string>& target_kset, double mst, SubAln* out_aln )
 {
   SubAln max_aln = kmerAlign( target_kset );
   if ( out_aln ) {
@@ -201,7 +210,7 @@ bool FQread::SPscreen( std::unordered_set<std::string> target_kset, double mst, 
  *  maxmum_scoring_subaln <SubAln> : the maximum scoring subalignment
  *
  ****************************************************************************************************/
-SubAln FQread::kmerAlign( std::unordered_set<std::string> target_kset )
+SubAln FQread::kmerAlign( const std::unordered_set<std::string>& target_kset )
 {
   std::vector<std::string> ctarget_kset;
 
